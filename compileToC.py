@@ -3,23 +3,25 @@
 # *****************************************************************************/
 # * Authors: Joseph Tarango
 # * Developed on Python 3.7
+# * Application to compile .fpcores to .c programs and other supported types.
 # *****************************************************************************/
 from __future__ import absolute_import, division, print_function, \
     unicode_literals  # , nested_scopes, generators, generator_stop, with_statement, annotations
-import os, subprocess, pprint, datetime, timer, traceback
+import os, subprocess, pprint, datetime, threading, traceback, psutil
 
-def findAll(fileType='.fpcore', directoryTreeRootNode=None, debug=False):
+def findAll(fileType='.fpcore', directoryTreeRootNode=None, debug=False, verbose=False):
     """
     Find all files of a type given a directory.
     Args:
         fileType: file extension to look for.
         directoryTreeRootNode: filesystem main root node
         debug: debug mode for adding functionality.
+        verbose: Add more information to debug.
 
     Returns:
 
     """
-    if directoryTreeRootNode is None or os.path.exists(directoryTreeRootNode):
+    if directoryTreeRootNode is None or os.path.exists(directoryTreeRootNode) is False:
         directoryTreeRootNode = (os.path.dirname(__file__) or '.')
 
     if debug is True:
@@ -33,7 +35,7 @@ def findAll(fileType='.fpcore', directoryTreeRootNode=None, debug=False):
             for dirSelect in dirs:
                 dirLocation = os.path.abspath(os.path.join(root, dirSelect))
                 directoryTree.append(dirLocation)
-                if debug is True:
+                if debug is True and verbose is True:
                     print('Directory Node: {0}'.format(dirLocation))
             for file in files:
                 if file.endswith(fileType):
@@ -43,66 +45,103 @@ def findAll(fileType='.fpcore', directoryTreeRootNode=None, debug=False):
                         print('{0} File Node: {1}'.format(fileType, fileLocation))
                 else:
                     otherFileLocation = os.path.abspath(os.path.join(root, file))
-                    if debug is True:
+                    if verbose is True and debug is True:
                         print('Other {0} File Node: {1}'.format(file.endswith(fileType), otherFileLocation))
         except BaseException as ErrorContext:
             print('Exception {0}'.format(ErrorContext))
             pass
-    return pyFileTree, directoryTree
+    return fileTypeTree, directoryTree
 
+def procKiller(autoGenBuild=None, killAllProcess=False):
+    if autoGenBuild is None:
+        me = psutil.Process(os.getpid())
+    else:
+        me = autoGenBuild
+    if killAllProcess is True:
+        for child in me.get_children():
+            child.kill()
 
-def autogenAll(racketExe='racket', operationMode='export.rkt', baseDir='benchmarks', sourceType='.fpcore', destinationType='.c', outFolder='compiledFiles', debug=False):
+def autoGenAll(racketExe='/usr/bin/racket', operationMode='export.rkt ', baseDir='benchmarks', sourceType='.fpcore',
+               destinationType='.c', outFolder='compiledFiles', debug=False, verbose=False, shell=False, myenv=None,
+               timeout=120):
     """ Method to generate language files from fpcores.
         Example Usage - racket export.rkt benchmarks/rump.fpcore rump.c
     Args:
-        racketExe: racket key program work in path
+        racketExe: racket key program work in path.
         operationMode: racket mode of operation in this case export to c.
         baseDir: base directory containing fpcores.
         sourceType: source type .fpcore
         destinationType: destination type .c
         outFolder: output folder to save files.
         debug: debug flag for new development
+        verbose: Add more debug information.
+        shell: Operate in shell mode for subprocess.
+        myenv: Pass user environment to subprocess.
+        timeout: Timeout for each execution.
 
     Returns: Good and Bad list for completion of subprocess
 
     """
+    if myenv is None:
+        myenv = os.environ.copy()
     List_Pass = []
     List_Fail = []
     runCommandFPB = None
     runCommandFPBCout = None
     runCommandFPBErr = None
     timer = None
+    output = None
 
     baseDirPath = os.path.abspath(os.path.join(os.getcwd(), baseDir))
-    if os.path.exists(baseDirPath):
-        files, directoryTree = findAll(fileType=sourceType, directoryTreeRootNode=baseDirPath, debug=debug)
+    basePathExists = os.path.exists(baseDirPath)
+    if verbose or debug:
+        print("Base path Exists {}".format(basePathExists))
+    if basePathExists is True:
+        files, directoryTree = findAll(fileType=sourceType, directoryTreeRootNode=baseDirPath, debug=debug, verbose=verbose)
     else:
-        files, directoryTree = findAll(fileType=sourceType, directoryTreeRootNode=None, debug=debug)
+        files, directoryTree = findAll(fileType=sourceType, directoryTreeRootNode=None, debug=debug, verbose=verbose)
+
+    # Check Destination folder
+    outFolder = os.path.abspath(os.path.join(os.getcwd(), outFolder))
+    if os.path.exists(outFolder) is False:
+        os.makedirs(outFolder)
+
+    operationMode = os.path.abspath(operationMode)
+    if os.path.exists(operationMode) is False:
+        return
 
     if debug is True:
-        pprint.print("files {0}\n directories {1}".format(files, directoryTree))
+        pprint.pprint("files {0}\n directories {1}".format(files, directoryTree))
 
     # Spawn a subprocess to generate the Python C-Type parser library and wait for it to complete
-    cStart = datetime.now()
+    cStart = datetime.datetime.now()
     outFolderPath = os.path.abspath(os.path.join(os.getcwd(), outFolder))
 
     for fileSelect in files:
-        cStartElement = datetime.now()
+        cStartElement = datetime.datetime.now()
         head, tail = os.path.split(fileSelect)
         selectedfileName = os.path.splitext(tail)[0]
         destFileName = (selectedfileName + destinationType)
         destFileName = os.path.abspath(os.path.join(outFolderPath, destFileName))
 
-        cmdInputs = 'export.rkt {0} {1}'.format(str(fileSelect), str(destFileName))
-        print(racketExe + cmdInputs)
+        cmdInputs = ('{0} {1} {2}'.format(str(operationMode), str(fileSelect), str(destFileName)))
+
+        firstCommand = ('{0} {1}'.format(racketExe, cmdInputs))
+        secondCommand = 'exit'
+        if debug is True and verbose is True:
+            print('Command {0}'.format(racketExe))
+            print('Command Inputs {}'.format(cmdInputs))
+            print('Command Exit {0}'.format(secondCommand ))
+            print('Full Commands {0}; {1}'.format(firstCommand, secondCommand))
 
         try:
             if debug is True:  # Output all to command line!
-                runCommandFPB = subprocess.Popen([sys.executable, racketExe,  operationMode , str(fileSelect), str(destFileName)], shell=ENABLE_SHELL, env=myenv)
-            else:  # Output nada to command line!
-                runCommandFPB = subprocess.Popen([sys.executable, racketExe,  operationMode , str(fileSelect), str(destFileName)],
-                                                 stdin=subprocess.PIPE, stdout=output if output else subprocess.PIPE, shell=ENABLE_SHELL, env=myenv )
-            timer = Timer(timeout, runCommandFPB.kill)
+                runCommandFPB = subprocess.Popen(["{}; {}".format(firstCommand, secondCommand)], shell=shell, env=myenv, close_fds=True)
+            else:
+                runCommandFPB = subprocess.Popen(["{}; {}".format(firstCommand, secondCommand)], shell=shell, env=myenv, stdin=subprocess.PIPE,
+                                                 stdout=output if output else subprocess.PIPE, close_fds=True)
+
+            timer = threading.Timer(timeout, runCommandFPB.kill)
             timer.start()
             runCommandFPBCout, runCommandFPBErr = runCommandFPB.communicate()
             runCommandFPB.poll()
@@ -111,22 +150,23 @@ def autogenAll(racketExe='racket', operationMode='export.rkt', baseDir='benchmar
             pprint.pprint("{0}\n{1}\n{2}".format(errorContext, runCommandFPBCout, runCommandFPBErr))
             procKiller(runCommandFPB, True)
         finally:
-            print("Normal termination Process ID " + str(selectedfileName))
+            if debug is True and verbose is True:
+                print("Normal termination Process ID " + str(selectedfileName))
             procKiller(runCommandFPB, False)
             timer.cancel()
 
         if runCommandFPB.returncode != 0:
             List_Fail.append(str(fileSelect))
-            print("%s: auto generation parser fail time %s seconds" % (str(fileSelect), str(datetime.now() - cStartElement)))
+            print("%s:generation parser fail time %s seconds" % (str(fileSelect), str(datetime.datetime.now() - cStartElement)))
             print("Please execute command: ")
-            print("python " + ctypePyFile + ' ' + ctypeAutoGenInputs)
+            print("python {0} {1} {2}".format(str(racketExe),  str(operationMode), str(cmdInputs)))
         else:
             List_Pass.append(str(fileSelect))
-            print("%s: auto generation parser pass time %s seconds" % (str(fileSelect), str(datetime.now() - cStartElement)))
-    print(str(projectname) + ": auto generation parser total elapsed " + str(datetime.now() - cStart) + " seconds")
+            print("%s: generation parser pass time %s seconds" % (str(fileSelect), str(datetime.datetime.now() - cStartElement)))
+    print(str(racketExe) + ":generation parser total elapsed " + str(datetime.datetime.now() - cStart) + " seconds")
 
     # Pass list output construction
-    if List_Pass is not None:
+    if List_Pass is not None and List_Fail is not []:
         ObjectListPassStr = ("[")
         isFirst = True
         for item in List_Pass:
@@ -136,12 +176,12 @@ def autogenAll(racketExe='racket', operationMode='export.rkt', baseDir='benchmar
             else:
                 ObjectListPassStr = (ObjectListPassStr + "," + item)
         ObjectListPassStr = (ObjectListPassStr + "]")
-        print("PassList: " + ObjectListPassStr)
+        pprint.pprint("PassList: {}".format(ObjectListPassStr))
     else:
         print("PassList: Nil")
 
     # Fail list output construction
-    if List_Fail is not None:
+    if List_Fail is not None and List_Fail is not []:
         ObjectListFailStr = ("[")
         isFirst = True
         for item in List_Fail:
@@ -151,7 +191,7 @@ def autogenAll(racketExe='racket', operationMode='export.rkt', baseDir='benchmar
             else:
                 ObjectListFailStr = (ObjectListFailStr + "," + item)
         ObjectListFailStr = (ObjectListFailStr + "]")
-        print("FailList: " + ObjectListFailStr)
+        pprint.pprint("FailList: " + ObjectListFailStr)
     else:
         print("FailList: Nil")
     return (List_Pass, List_Fail)
@@ -165,6 +205,7 @@ def main():
     parser = OptionParser()
     parser.add_option("--debug", action='store_true', dest='debug', default=False, help='Debug mode.')
     parser.add_option("--verbose", action='store_true', dest='verbose', default=False, help='Verbose printing for debug use.')
+    parser.add_option("--shell", action='store_true', dest='shell', default=True, help='Enter shell mode for independent execution.')
     parser.add_option("--baseDir", action='store_true', dest='baseDir', default=None, help='Base directory that contains fpcore files.')
     parser.add_option("--sourceTypes", action='store_true', dest='sourceTypes', default=None, help='Debug mode.')
     parser.add_option("--destinationType", action='store_true', dest='destinationType', default=None, help='Debug mode.')
@@ -174,23 +215,24 @@ def main():
     ##############################################
     # Main
     ##############################################
-    pprint.pprint("Options from User\n {0}".format(options))
+    pprint.pprint("Options from User {0}".format(options))
     if (options.baseDir is None):
         options.baseDir = 'benchmarks'
-    if (options.sourceType is None):
-        options.sourceType = '.fpcore'
+    if (options.sourceTypes is None):
+        options.sourceTypes = '.fpcore'
     if (options.destinationType is None):
         options.destinationType = '.c'
     if (options.outFolder is None):
         options.outFolder = 'compiledFiles'
-    pprint.pprint("Options selected\n {0}".format(options))
-    autogenAll(racketExe='racket', operationMode='export.rkt',
-               baseDir=options.baseDir, sourceType=options.sourceType,
+    pprint.pprint("Options selected {0}".format(options))
+    myenv = os.environ.copy()
+    autoGenAll(racketExe='/usr/bin/racket', operationMode='export.rkt',
                destinationType=options.destinationType, outFolder=options.outFolder,
-               debug=options.debug)
+               debug=options.debug, verbose=options.verbose, shell=options.shell, myenv=myenv)
     return 0
 
-if __name__ == '__main__':
+
+if (__name__ == '__main__'):
     """Performs execution delta of the process."""
     p = datetime.datetime.now()
     try:
