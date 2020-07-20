@@ -1,3 +1,27 @@
+#!/bin/bash
+# -*- coding: utf-8 -*-
+# * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+# * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+# * AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+# * THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# *
+# * @file
+# * @author Skynet
+# * @brief Floating Point Core Benchmark Code Generator.
+# * @see https://fpbench.org/
+# * @benchmark: N/A
+# * @researcher: Joseph David Tarango
+# * @website http://www.cs.ucr.edu/~jtarango 
+# * @affiliation: University of California, Riverside
+# * @date: JULY 18, 2020
+# *
+# Example of how to get and make
 # git clone https://github.com/FPBench/FPBench.git
 # cd FPBench
 # git checkout aa7bacb06277f5e8e20ba33d36bd233a7244fb15
