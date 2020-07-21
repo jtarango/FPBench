@@ -145,12 +145,38 @@ PROGRAM=test
 # all: clean print turnin
 .DEFAULT_GOAL := all
 
-all: compile
+all: clean compile_F compile_D compile_LD compile_DYP compile_PT compile_UN print printpdf turnin
 
 # Compile C code
-compile:
-	$(COMPILER) $(COMPILEFLAGS) -o template.clib template.c -lm
-	# $(COMPILER) -I $(COMPILEFLAGS) -o template.clib template.c -lm
+compile_F:
+	$(info Compile F.)
+	$(COMPILER)    $(COMPILEFLAGS) -o template_f.a  template.c -lm
+	$(COMPILER) -I $(COMPILEFLAGS) -o template_f.so template.c -lm
+
+compile_D:
+	$(info Compile D.)
+	$(COMPILER)    $(COMPILEFLAGS) -o template_d.a  template.c -lm
+	$(COMPILER) -I $(COMPILEFLAGS) -o template_d.so template.c -lm
+
+compile_LD:
+	$(info Compile LD.)
+	$(COMPILER)    $(COMPILEFLAGS) -o template_ld.a  template.c -lm
+	$(COMPILER) -I $(COMPILEFLAGS) -o template_ld.so template.c -lm
+
+compile_DYP:
+	$(info Compile DYP.)
+	$(COMPILER)    $(COMPILEFLAGS) -o template_dyp.a  template.c -lm
+	$(COMPILER) -I $(COMPILEFLAGS) -o template_dyp.so template.c -lm
+
+compile_PT:
+	$(info Compile PT.)
+	$(COMPILER)    $(COMPILEFLAGS) -o template_pt.a  template.c -lm
+	$(COMPILER) -I $(COMPILEFLAGS) -o template_pt.so template.c -lm
+
+compile_UN:
+	$(info Compile UN.)
+	$(COMPILER)    $(COMPILEFLAGS) -o template_un.a  template.c -lm
+	$(COMPILER) -I $(COMPILEFLAGS) -o template_un.so template.c -lm
 
 # Python Code
 # pyRunner:
@@ -163,7 +189,7 @@ clean:
 
 # Print files to a .ps document
 print:
-	a2ps -M letter --line-numbers=1 -o $(PSPRINT) $(FILES)
+	a2ps -M letter --line-numbers=1 --pro=color --highlight-level=light --pretty-print -o $(PSPRINT) $(FILES)
 
 printpdf:
 	enscript -2 --fancy-header --line-numbers=1 --truncate-lines \
