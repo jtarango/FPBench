@@ -19,7 +19,7 @@
  * @affiliation: University of California, Riverside
  * @date: JULY 18, 2020
  */
-
+/****************************************************************************************/
 // C++ Compatibility
 #ifdef __cplusplus
 extern "C"
@@ -29,12 +29,15 @@ extern "C"
 // Definition of C/C++ library
 #ifndef _FPCORE_C_
 #define _FPCORE_C_
-
+/****************************************************************************************/
+// Stack issues for big data generation in Microsoft Windows.
+// Makefile in linux will need to ensure ulimit changes.
+// Without these changes you will get a segmentation fault for stack and heap limits.
 #ifdef _MSC_VER
     #pragma comment(linker,  "/HEAP:2147483648")
     #pragma comment(linker, "/STACK:2147483648")
 #endif // _MSC_VER
-
+/****************************************************************************************/
 // Includes
 #include <fenv.h>
 #include <math.h>
@@ -47,6 +50,7 @@ extern "C"
 #include <climits>
 #include <assert.h>
 
+/****************************************************************************************/
 /********* CONFIGURATION INFORMATION BELOW *********/
 // Source evaluation type for library.
 // TYPE HEADER CONFIGURATION FILE SELECTION.
@@ -135,39 +139,81 @@ extern "C"
     typedef long double C_TYPE;
     #endif // C_TYPE
 #endif // ((CF == 0) && (CD == 0) && (CLD == 0) && (CDYP ==0) && (CPT == 0) && (CPUN == 0))
+/****************************************************************************************/
+// Used for test harness, generates file of size according to the comment.
+//  File size with (loop, benchmarks in total) := (testLoops * MAX_FUNCTIONS) iterations.
+const unsigned int testLoops = (1);       //      60 KB with (1 * 77) iterations.
+// const unsigned int testLoops = (1 << 2);  //   239.2 KB
+// const unsigned int testLoops = (1 << 3);  //   478.4 KB
+// const unsigned int testLoops = (1 << 4);  //   956.8 KB
+// const unsigned int testLoops = (1 << 5);  //    1.93 MB
+// const unsigned int testLoops = (1 << 6);  //    3.75 MB
+// const unsigned int testLoops = (1 << 7);  //     7.5 MB
+// const unsigned int testLoops = (1 << 8);  //      15 MB
+// const unsigned int testLoops = (1 << 9);  //    30.6 MB
+// const unsigned int testLoops = (1 << 11); //   61.12 MB
+// const unsigned int testLoops = (1 << 12); //  122.24 MB
+// const unsigned int testLoops = (1 << 13); //  244.48 MB
+// const unsigned int testLoops = (1 << 14); //  488.96 MB
+// const unsigned int testLoops = (1 << 15); //  977.92 MB
+// const unsigned int testLoops = (1 << 16); // 1955.84 GB
+const int isDebugOn = 0;
+/****************************************************************************************/
 /********* CONFIGURATION INFORMATION ABOVE *********/
 
-// Used for test harness
-const unsigned int testLoops = (UINT_MAX);
-const int isDebugOn = 0;
-
 typedef long unsigned int fpbenchTime_t; // Timer width for numerical with issues
-
-// API Parameters based on functions.
-#define CHAR_BUFFER_SIZE (1024) // Use fixed buffer sizes for secure code.
-#define MIN_VARS (2) // Min number of variables for benchmarks.
-#define MAX_VARS (20) // Max number of variables for benchmarks.
-#define MIN_FUNCTIONS (1)
-#define MAX_FUNCTIONS (77)
-#define TIME_LIMIT_SHIFT (16) // Bit shift value for time.
-#define TIME_LIMIT_SHIFT_CHECK (pow(2, ceil(log(TIME_LIMIT_SHIFT)/log(TIME_LIMIT_SHIFT)))) // Bit shift value for time.
-#define TIME_LIMIT ((fpbenchTime_t)((fpbenchTime_t)1 << (fpbenchTime_t)TIME_LIMIT_SHIFT)-(fpbenchTime_t)1) // Timeout value in cycles. #define TIME_LIMIT INT_MAX
-
-/* Main argv index positions.
-* ./program  1   1.0  2.0    0
-* ./program  6   1.0  2.0  3.0  4.0  5.0  6.0  7.0  8.0   9.0  1
-*     ^0     ^1  ^2   ^3    ^4   ^5   ^6   ^7   ^8   ^9   ^10  ^11
-*/
-#define minInputs (MIN_VARS + 3)
-#define maxInputs (MAX_VARS + 3)
-#define inputStart (2)
-// LIBRARY_MODE is set 1 one when the user does not want a main.
-
 typedef enum{
     healthyDaisy = 0,
     faultDaisy = 1,
 } statusDaisy; // library status
 
+/****************************************************************************************/
+// Functions for determining the functionality.
+/****************************************************************************************/
+// FP Benchmark API Parameters based on functions.
+#define CHAR_BUFFER_SIZE (1024) // Use fixed buffer sizes for secure code.
+#define MIN_VARS (2) // Min number of variables for benchmarks.
+#define MAX_VARS (20) // Max number of variables for benchmarks.
+#define MIN_FUNCTIONS (1) // Benchmark number start.
+#define MAX_FUNCTIONS (77) // Benchmark number stop.
+#define TIME_LIMIT_SHIFT (16) // Bit shift value for time.
+#define TIME_LIMIT_SHIFT_CHECK (pow(2, ceil(log(TIME_LIMIT_SHIFT)/log(TIME_LIMIT_SHIFT)))) // Bit shift value for time.
+#define TIME_LIMIT ((fpbenchTime_t)((fpbenchTime_t)1 << (fpbenchTime_t)TIME_LIMIT_SHIFT)-(fpbenchTime_t)1) // Timeout value in cycles. #define TIME_LIMIT INT_MAX
+#define minInputs (MIN_VARS + 3) // Minimum user inputs
+#define maxInputs (MAX_VARS + 3) // Maximum user inputs.
+#define inputStart (2) // Start position for FP Bench function inputs.
+/****************************************************************************************/
+// MAIN or standalone User input.
+// LIBRARY_MODE is set 1 one when the user does not want a main.
+// Main argv index positions with maxim inputs = maxInputs
+// ./program  1   1.0  2.0    0
+// ./program  6   1.0  2.0  3.0  4.0  5.0  6.0  7.0  8.0   9.0  1
+//     ^0     ^1  ^2   ^3    ^4   ^5   ^6   ^7   ^8   ^9   ^10  ^11
+/****************************************************************************************/
+int main(int argc, char *argv[CHAR_BUFFER_SIZE]);       // Main if LIBRARY_MODE does not exist
+int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE]); // Main if LIBRARY_MODE > 1.
+/****************************************************************************************/
+// Application Programming Interface (API)
+/****************************************************************************************/
+statusDaisy fpbench_API(int function, E_TYPE vars[MAX_VARS], E_TYPE *retValue, int debug, long double *runTime);
+/****************************************************************************************/
+// Helper for main purpose.
+statusDaisy fpcore_executeBenchmark(int function, C_TYPE *inputs, C_TYPE *returnValue);
+statusDaisy fpbench_CVSProcess(const char sourceFile[], const char destinationFile[], long unsigned int indexStart, int debug);
+void fpbench_testHarness(void); // Self Test and baseline data generation from random functions.
+/****************************************************************************************/
+// Helper Functions.
+/****************************************************************************************/
+void fpbench_map(int selected, char benchmarkName[CHAR_BUFFER_SIZE]);
+void copy_string(char destination[CHAR_BUFFER_SIZE], char source[CHAR_BUFFER_SIZE]);
+E_TYPE fabsf_fpcore(E_TYPE x);
+unsigned int min_uint(unsigned int a, unsigned int b);
+double rand_double(void);
+double gauss_rand(int select);
+int validDataInput(double randomValue);
+int timeOut(fpbenchTime_t tStart, fpbenchTime_t tStop);
+E_TYPE isOuttaTime(int outtaTime, E_TYPE value, const char name[CHAR_BUFFER_SIZE]);
+long signed int getFileSize(FILE *fileContext);
 /****************************************************************************************/
 // Pre-definitions functions from FPCores.
 /****************************************************************************************/
@@ -179,7 +225,7 @@ E_TYPE daisy_ex3(E_TYPE radius, E_TYPE theta);
 E_TYPE daisy_ex4(E_TYPE t, E_TYPE resistance, E_TYPE frequency, E_TYPE inductance, E_TYPE maxVoltage);
 E_TYPE daisy_ex5(E_TYPE a, E_TYPE b, E_TYPE c, E_TYPE d, E_TYPE e, E_TYPE f, E_TYPE g, E_TYPE h, E_TYPE i);
 E_TYPE daisy_ex6(E_TYPE a, E_TYPE b, E_TYPE c, E_TYPE d, E_TYPE e, E_TYPE f, E_TYPE g, E_TYPE h, E_TYPE i);
-
+/****************************************************************************************/
 /*fptaylor_extra*/
 E_TYPE fptaylor_extra_ex0(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4, E_TYPE x5, E_TYPE x6);
 E_TYPE fptaylor_extra_ex1(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4, E_TYPE x5, E_TYPE x6);
@@ -193,7 +239,7 @@ E_TYPE fptaylor_extra_ex12(E_TYPE z);
 E_TYPE fptaylor_extra_ex13(E_TYPE x, E_TYPE y);
 E_TYPE fptaylor_extra_ex14(E_TYPE x, E_TYPE y);
 E_TYPE fptaylor_extra_ex15(E_TYPE x1, E_TYPE x2);
-
+/****************************************************************************************/
 /*fptaylor_real2float*/
 E_TYPE fptaylor_real2float_ex3(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4, E_TYPE x5, E_TYPE x6);
 E_TYPE fptaylor_real2float_ex4(E_TYPE x1, E_TYPE x2);
@@ -201,7 +247,7 @@ E_TYPE fptaylor_real2float_ex5(E_TYPE x1, E_TYPE x2);
 E_TYPE fptaylor_real2float_ex8(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4, E_TYPE x5, E_TYPE x6);
 E_TYPE fptaylor_real2float_ex9(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4);
 E_TYPE fptaylor_real2float_ex10(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4, E_TYPE x5, E_TYPE x6);
-
+/****************************************************************************************/
 /*fptaylor_tests*/
 E_TYPE fptaylor_tests_ex0(E_TYPE t);
 E_TYPE fptaylor_tests_ex1(E_TYPE x, E_TYPE y);
@@ -213,7 +259,7 @@ E_TYPE fptaylor_tests_ex6(E_TYPE x);
 E_TYPE fptaylor_tests_ex7(E_TYPE x);
 E_TYPE fptaylor_tests_ex8(E_TYPE x0, E_TYPE x1, E_TYPE x2, E_TYPE x3);
 E_TYPE fptaylor_tests_ex9(E_TYPE x0, E_TYPE x1, E_TYPE x2, E_TYPE x3);
-
+/****************************************************************************************/
 /*hamming_ch3*/
 E_TYPE hamming_ch3_ex0(E_TYPE x);
 E_TYPE hamming_ch3_ex4(E_TYPE x);
@@ -223,14 +269,14 @@ E_TYPE hamming_ch3_ex12(E_TYPE a, E_TYPE b, E_TYPE c);
 E_TYPE hamming_ch3_ex13(E_TYPE a, E_TYPE b, E_TYPE c);
 E_TYPE hamming_ch3_ex14(E_TYPE a, E_TYPE b2, E_TYPE c);
 E_TYPE hamming_ch3_ex15(E_TYPE a, E_TYPE b2, E_TYPE c);
-
+/****************************************************************************************/
 /*herbie*/
 E_TYPE herbie_ex0(E_TYPE re, E_TYPE im);
-
+/****************************************************************************************/
 /*premonious*/
 E_TYPE premonious_ex0(E_TYPE n);
 E_TYPE premonious_ex1(E_TYPE n);
-
+/****************************************************************************************/
 /*rosa*/
 E_TYPE rosa_ex0(E_TYPE u, E_TYPE v, E_TYPE T);
 E_TYPE rosa_ex1(E_TYPE u, E_TYPE v, E_TYPE T);
@@ -254,11 +300,11 @@ E_TYPE rosa_ex18(E_TYPE x);
 E_TYPE rosa_ex19(E_TYPE a, E_TYPE b, E_TYPE c);
 E_TYPE rosa_ex20(E_TYPE a, E_TYPE b, E_TYPE c);
 E_TYPE rosa_ex21(E_TYPE a, E_TYPE b, E_TYPE c);
-
+/****************************************************************************************/
 /*rump*/
 E_TYPE rump_ex1(E_TYPE a, E_TYPE b);
 E_TYPE rump_ex2(E_TYPE a, E_TYPE b);
-
+/****************************************************************************************/
 /*salsa*/
 E_TYPE salsa_ex1(E_TYPE m, E_TYPE kp, E_TYPE ki, E_TYPE kd, E_TYPE c);
 E_TYPE salsa_ex3(E_TYPE y, E_TYPE yd);
@@ -268,23 +314,7 @@ E_TYPE salsa_ex7(E_TYPE x0);
 E_TYPE salsa_ex8(E_TYPE a11, E_TYPE a12, E_TYPE a13, E_TYPE a14, E_TYPE a21, E_TYPE a22, E_TYPE a23, E_TYPE a24, E_TYPE a31, E_TYPE a32, E_TYPE a33, E_TYPE a34, E_TYPE a41, E_TYPE a42, E_TYPE a43, E_TYPE a44, E_TYPE v1, E_TYPE v2, E_TYPE v3, E_TYPE v4);
 E_TYPE salsa_ex9(E_TYPE Q11, E_TYPE Q12, E_TYPE Q13, E_TYPE Q21, E_TYPE Q22, E_TYPE Q23, E_TYPE Q31, E_TYPE Q32, E_TYPE Q33);
 /****************************************************************************************/
-// Application Programming Interface (API)
-statusDaisy fpbench_API(int function, E_TYPE vars[MAX_VARS], E_TYPE *retValue, int debug, long double *runTime);
-
-// Self Test.
-void fpbench_testHarness(void);
-/****************************************************************************************/
-
-// Helper Functions.
-E_TYPE fabsf_fpcore(E_TYPE x);
-unsigned int min_uint(unsigned int a, unsigned int b);
-double rand_double(void);
-double gauss_rand(int select);
-int validDataInput(double randomValue);
-int timeOut(fpbenchTime_t tStart, fpbenchTime_t tStop);
-E_TYPE isOuttaTime(int outtaTime, E_TYPE value, const char name[CHAR_BUFFER_SIZE]);
-
-// MAIN Functions.
+// MAIN Benchmark Context Functions.
 /****************************************************************************************/
 /*DAISY*/
 E_TYPE daisy_ex0(E_TYPE x, E_TYPE y) {
@@ -335,7 +365,7 @@ E_TYPE daisy_ex6(E_TYPE a, E_TYPE b, E_TYPE c, E_TYPE d, E_TYPE e, E_TYPE f, E_T
     E_TYPE retval = ((E_TYPE) (((E_TYPE) (((E_TYPE) (a * ((E_TYPE) (e * i)))) + ((E_TYPE) (((E_TYPE) (g * ((E_TYPE) (b * f)))) + ((E_TYPE) (c * ((E_TYPE) (d * h)))))))) - ((E_TYPE) (((E_TYPE) (e * ((E_TYPE) (c * g)))) + ((E_TYPE) (((E_TYPE) (i * ((E_TYPE) (b * d)))) + ((E_TYPE) (a * ((E_TYPE) (f * h))))))))));
     return retval;
 }
-
+/****************************************************************************************/
 /*fptaylor_extra*/
 E_TYPE fptaylor_extra_ex0(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4, E_TYPE x5, E_TYPE x6) {
     E_TYPE retval =  ((((((-x2 * x3) - (x1 * x4)) + (x2 * x5)) + (x3 * x6)) - (x5 * x6)) + (x1 * (((((-x1 + x2) + x3) - x4) + x5) + x6)));
@@ -402,7 +432,7 @@ E_TYPE fptaylor_extra_ex15(E_TYPE x1, E_TYPE x2) {
     E_TYPE retval =  ((a * a) + (b * b));
     return retval;
 }
-
+/****************************************************************************************/
 /*fptaylor_real2float*/
 E_TYPE fptaylor_real2float_ex3(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4, E_TYPE x5, E_TYPE x6) {
     E_TYPE retval =  ((((((-25.0 * ((x1 - 2.0) * (x1 - 2.0))) - ((x2 - 2.0) * (x2 - 2.0))) - ((x3 - 1.0) * (x3 - 1.0))) - ((x4 - 4.0) * (x4 - 4.0))) - ((x5 - 1.0) * (x5 - 1.0))) - ((x6 - 4.0) * (x6 - 4.0)));
@@ -433,7 +463,7 @@ E_TYPE fptaylor_real2float_ex10(E_TYPE x1, E_TYPE x2, E_TYPE x3, E_TYPE x4, E_TY
     E_TYPE retval =  ((((((((x1 * x4) * (((((-x1 + x2) + x3) - x4) + x5) + x6)) + ((x2 * x5) * (((((x1 - x2) + x3) + x4) - x5) + x6))) + ((x3 * x6) * (((((x1 + x2) - x3) + x4) + x5) - x6))) - ((x2 * x3) * x4)) - ((x1 * x3) * x5)) - ((x1 * x2) * x6)) - ((x4 * x5) * x6));
     return retval;
 }
-
+/****************************************************************************************/
 /*fptaylor_tests*/
 E_TYPE fptaylor_tests_ex0(E_TYPE t) {
     E_TYPE retval =  (t / (t + 1.0));
@@ -493,7 +523,7 @@ E_TYPE fptaylor_tests_ex9(E_TYPE x0, E_TYPE x1, E_TYPE x2, E_TYPE x3) {
     E_TYPE retval =  ((x0 + x1) + (x2 + x3));
     return retval;
 }
-
+/****************************************************************************************/
 /*hamming_ch3*/
 E_TYPE hamming_ch3_ex0(E_TYPE x) {
     E_TYPE retval =  (sqrt((x + 1.0)) - sqrt(x));
@@ -534,13 +564,13 @@ E_TYPE hamming_ch3_ex15(E_TYPE a, E_TYPE b2, E_TYPE c) {
     E_TYPE retval =  ((-b2 - sqrt(((b2 * b2) - (a * c)))) / a);
     return retval;
 }
-
+/****************************************************************************************/
 /*herbie*/
 E_TYPE herbie_ex0(E_TYPE re, E_TYPE im) {
     E_TYPE retval =  ( ((E_TYPE) 0.5) * (E_TYPE) sqrt(( ((E_TYPE)2.0) * (sqrt(((re * re) + (im * im))) + re))));
     return retval;
 }
-
+/****************************************************************************************/
 /*premonious*/
 E_TYPE premonious_ex0(E_TYPE n)
 {
@@ -668,7 +698,7 @@ E_TYPE premonious_ex1(E_TYPE n)
 
     return retval;
 }
-
+/****************************************************************************************/
 /*rosa*/
 E_TYPE rosa_ex0(E_TYPE u, E_TYPE v, E_TYPE T) {
     E_TYPE t1 = (331.4 + (0.6 * T));
@@ -847,7 +877,7 @@ E_TYPE rosa_ex21(E_TYPE a, E_TYPE b, E_TYPE c) {
     E_TYPE retval =  sqrt((((s * (s - a)) * (s - b)) * (s - c)));
     return retval;
 }
-
+/****************************************************************************************/
 /*rump*/
 E_TYPE rump_ex1(E_TYPE a, E_TYPE b) {
     E_TYPE b2 = (b * b);
@@ -870,20 +900,8 @@ E_TYPE rump_ex2(E_TYPE a, E_TYPE b) {
     E_TYPE retval =  (((((333.75 - a2) * b6) + (a2 * firstexpr)) + (5.5 * b8)) + (a / (2.0 * b)));
     return retval;
 }
-
+/****************************************************************************************/
 /*salsa*/
-E_TYPE fabsf_fpcore(E_TYPE x)
-{
-    E_TYPE retval;
-    if (x >0) {
-        retval = x;
-    }
-    else{
-        retval=(-1 * x);
-    }
-    return retval;
-}
-
 E_TYPE salsa_ex1(E_TYPE m, E_TYPE kp, E_TYPE ki, E_TYPE kd, E_TYPE c) {
     // Timeout Code
     int outtaTime;
@@ -1214,19 +1232,35 @@ E_TYPE salsa_ex9(E_TYPE Q11, E_TYPE Q12, E_TYPE Q13, E_TYPE Q21, E_TYPE Q22, E_T
     return retval;
 }
 
+/****************************************************************************************/
+/* FP Core Salsa helper function to get absolute value */
+E_TYPE fabsf_fpcore(E_TYPE x)
+{
+    E_TYPE retval;
+    if (x >0) {
+        retval = x;
+    }
+    else{
+        retval=(-1 * x);
+    }
+    return retval;
+}
+
 /* Function to check passed time */
 int timeOut(fpbenchTime_t tStart, fpbenchTime_t tStop)
 {
     if ((((fpbenchTime_t) tStop - (fpbenchTime_t) tStart) > ((fpbenchTime_t) TIME_LIMIT)) ||
         (tStart > tStop)) {
         if (((fpbenchTime_t) tStop >> ((fpbenchTime_t) TIME_LIMIT_SHIFT_CHECK)) > 0) {
-            printf("...waiting...\n");
+            if (isDebugOn) {
+                printf("...waiting...\n");
+            }
         }
         return 1;
     }
     return 0;
 }
-/****************************************************************************************/
+
 /* Determines the size of a file and reports size */
 long signed int getFileSize(FILE *fileContext)
 {
@@ -1252,7 +1286,9 @@ E_TYPE isOuttaTime(int outtaTime, E_TYPE value, const char name[CHAR_BUFFER_SIZE
         returnValue = value;
     }
     else {
-        printf("*ERROR! TIME OUT in %s.*\n", name);
+        if (isDebugOn) {
+            printf("*ERROR! TIME OUT in %s.*\n", name);
+        }
         returnValue = nan("TIME_LIMIT");
     }
     return returnValue;
@@ -1383,7 +1419,9 @@ double rand_double(void)
     static int pingPong = 0;
     double v = 0;
     if (ranOnce == 0){
-        printf("  Random Seed Set\n");
+        if (isDebugOn) {
+            printf("  Random Seed Set\n");
+        }
         ranOnce++;
         srand(time(NULL)^clock()>>1); // srand(clock()) or srand(NULL)
     }
@@ -1394,7 +1432,8 @@ double rand_double(void)
     v = gauss_rand(pingPong);
     return v;
 }
-
+/****************************************************************************************/
+/* FPbench enumeration map of all benchmarks in code source */
 void fpbench_map(int selected, char benchmarkName[CHAR_BUFFER_SIZE])
 {
     // 1-7 daisy
@@ -1443,6 +1482,7 @@ void fpbench_map(int selected, char benchmarkName[CHAR_BUFFER_SIZE])
     return;
 }
 
+/* FP Core main execution map functions */
 statusDaisy fpcore_executeBenchmark(int function, C_TYPE *inputs, C_TYPE *returnValue)
 {
     C_TYPE retVal = 0;
@@ -1715,7 +1755,7 @@ statusDaisy fpbench_API(int function, E_TYPE vars[maxInputs+1], E_TYPE *retValue
     }
 
     fileByteSize = getFileSize(appendingDaisyFileContext);
-    if (fileByteSize > LONG_MAX) {
+    if (fileByteSize > LONG_MAX && isDebugOn) {
         printf("  File %s is %ld bytes of %ld byte maxima.\n", filenameDaisy, fileByteSize, LONG_MAX);
     }
 
@@ -2040,7 +2080,8 @@ statusDaisy fpbench_API(int function, E_TYPE vars[maxInputs+1], E_TYPE *retValue
 }
 
 /* Copy a char * array until a '\0' nil char. */
-void copy_string(char destination[CHAR_BUFFER_SIZE], char source[CHAR_BUFFER_SIZE]) {
+void copy_string(char destination[CHAR_BUFFER_SIZE], char source[CHAR_BUFFER_SIZE])
+{
     int index = 0;
 
     while ( (source[index] != '\0') &&
@@ -2105,7 +2146,7 @@ statusDaisy fpbench_CVSProcess(const char sourceFile[], const char destinationFi
         writingFileContext = fopen(destinationFile, "w");
     }
     fileByteSize = getFileSize(writingFileContext);
-    if (fileByteSize > LONG_MAX){
+    if (fileByteSize > LONG_MAX && isDebugOn){
         printf("  File %s is %ld bytes of %ld byte maxima.\n", destinationFile, fileByteSize, LONG_MAX);
     }
 
@@ -2399,3 +2440,4 @@ int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE]);
 #ifdef __cplusplus
 }
 #endif // __cplusplus
+// Fin.

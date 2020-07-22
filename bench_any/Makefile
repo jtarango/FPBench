@@ -24,6 +24,8 @@
 # To remove the executable and any extraneous files type "make clean" at
 # the command prompt.
 ###############################################################################
+# General extension information.
+###############################################################################
 # Linux extension    |Windows Equivalent    |Short description
 #  ------------------------------------------------------------
 #  .so, .o            | .dll                 | Object that can be loaded at runtime (Similar to DLL)
@@ -42,7 +44,7 @@
 #                     |   .js                |   A line at the top of the file called the shebang specifies what interpreter to run the file with.
 #                     |                      |   Windows only supports .bat and .cmd files as Batch files, and .vbs (vbscript) and .js (JScript, not to be confused with JavaScript) via the Windows Script Host (WSH).
 ###############################################################################
-# Intel Compiler information
+# Intel Compiler information setup.
 # INTEL_LIB_PATH = /opt/intel/system_studio_2020/lib/intel64_lin/
 # CPATH = ${ISS_ROOT}/compilers_and_libraries/linux/include
 # CPATH_MORE = ${ISS_ROOT}/compilers_and_libraries/linux/daal/include
@@ -92,7 +94,8 @@ PDFPRINT=$(TAR_NAME_PREFIX)_$(REVNUM)_$(FIRSTNAME)_$(LASTNAME).pdf
 
 #Files to be included in the PS/PDF print
 FILES=Makefile *.c
-# README *.h *.hpp *.cpp
+# Note do not add CSV unless you want big tar packages!
+# README *.h *.hpp *.cpp *.csv
 
 # Variable of to use GCC, G++, ICC, ICPC compilers.
 ifndef compiler
@@ -146,9 +149,13 @@ endif
 #  -fp-model precise=Intel compiler option for floats
 
 #Variable of GCC Compiler flags
-GCC_COMPILE_FLAGS= -g -Wall -Werror -ansi -O0 -fsplit-stack -m64 -static -ffloat-store -v
-#GCC_COMPILE_FLAGS= -g -Wall -Werror -ansi -O0 -fsplit-stack -m64 -static -ffloat-store
+# Verbose mode for compiler debug.
+# GCC_COMPILE_FLAGS= -g -Wall -Werror -ansi -O0 -fsplit-stack -m64 -static -ffloat-store -v
+# GCC Coompile with no optimizations, debug, warnings, stack split feature, static compilation, and FP restrictions for reproducible results.
+GCC_COMPILE_FLAGS= -g -Wall -Werror -ansi -O0 -fsplit-stack -m64 -static -ffloat-store
+# Intel compiler with float precise mode and static compilation.
 ICC_COMPILE_FLAGS= -g -std=c99 -fp-model=precise -static-intel
+
 ifeq ($(compiler),intel)
     COMPILEFLAGS=$(ICC_COMPILE_FLAGS)
 else
@@ -157,6 +164,7 @@ else
     # endif
 endif
 
+DEPS = $(info none yet.)
 INCLUDES = -I/usr/local/include -Ia -Ib -Ic -I($(HOME)/include
 LIBINCLUDES = -L/usr/local/lib -Lbuild/lib  -L $(HOME)/lib
 INC = $(INCLUDES) $(LIBINCLUDES)
@@ -171,74 +179,83 @@ FPBENCH_GRIND = /usr/bin/valgrind
 # all: clean print turnin
 .DEFAULT_GOAL := all
 
-all: clean compile_Default compile_F compile_D compile_LD compile_DYP compile_PT compile_UN print printpdf turnin
+all: clean compile_all print printpdf turnin
 
+compile_all: compile_Default compile_F compile_D compile_LD compile_DYP compile_PT compile_UN
+
+# Valgrind and debug program if we encounter issues.
 grinder:
 	$(info --leak-check=yes --tool=memcheck --track-origins=yes)
 	$(FPBENCH_GRIND) --undef-value-errors=no --main-stacksize=99999999 --max-stackframe=99999999 --valgrind-stacksize=10485760 --num-callers=500 --verbose --log-file=grinder_f.log ./template_f.a
 
 # Compile C code
+#  Static lib with main API, Static lib with no main.
 compile_Default:
-	$(info Compile Default 2>&1 | tee log)
-	$(COMPILER)     $(COMPILEFLAGS) -o template_default.a  template.c -lm
-	#$(COMPILER) -c $(COMPILEFLAGS) -o template_default.so template.c -lm
+	$(info Compile Default add for sending data to file. 2>&1 | tee log)
+	$(COMPILER)    $(COMPILEFLAGS) -o template_default.a  template.c -lm
+	$(COMPILER) -c $(COMPILEFLAGS) -DLIBRARY_MODE -o template_default.so template.c -lm
 
 compile_F:
 	$(info Compile F.)
 	$(COMPILER)    $(COMPILEFLAGS) -DCONFIG_F -o template_f.a  template.c -lm
-	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_F -o template_f.so template.c -lm
+	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_F -DLIBRARY_MODE -o template_f.so template.c -lm
 
 compile_D:
 	$(info Compile D.)
 	$(COMPILER)    $(COMPILEFLAGS) -DCONFIG_D -o template_d.a  template.c -lm
-	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_D -o template_d.so template.c -lm
+	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_D -DLIBRARY_MODE -o template_d.so template.c -lm
 
 compile_LD:
 	$(info Compile LD.)
 	$(COMPILER)    $(COMPILEFLAGS) -DCONFIG_LD -o template_ld.a  template.c -lm
-	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_LD -o template_ld.so template.c -lm
+	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_LD -o -DLIBRARY_MODE template_ld.so template.c -lm
 
 compile_DYP:
 	$(info Compile DYP.)
 	$(COMPILER)    $(COMPILEFLAGS) -DCONFIG_DYP -o template_dyp.a  template.c -lm
-	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_DYP -o template_dyp.so template.c -lm
+	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_DYP -o -DLIBRARY_MODE template_dyp.so template.c -lm
 
 compile_PT:
 	$(info Compile PT.)
 	$(COMPILER)    $(COMPILEFLAGS) -DCONFIG_PT -o template_pt.a  template.c -lm
-	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_PT -o template_pt.so template.c -lm
+	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_PT -o -DLIBRARY_MODE template_pt.so template.c -lm
 
 compile_UN:
 	$(info Compile UN.)
 	$(COMPILER)    $(COMPILEFLAGS) -DCONFIG_UN -o template_un.a  template.c -lm
-	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_UN -o template_un.so template.c -lm
+	$(COMPILER) -c $(COMPILEFLAGS) -DCONFIG_UN -o -DLIBRARY_MODE template_un.so template.c -lm
 
 run: run_default run_f run_d run_ld run_dyp run_pt run_un
-	$(info Run Libraries.)
+	$(info Running code.)
 
+# For Ubuntu/Linux we need more stack and heap space so use ulimit -s unlimited
 run_default:
 	ulimit -s unlimited && ./template_default.a
 
-run_f:
+run_F:
 	ulimit -s unlimited && ./template_f.a
 
-run_d:
+run_D:
 	ulimit -s unlimited && ./template_d.a
 
-run_ld:
+run_LD:
 	ulimit -s unlimited && ./template_ld.a
 
-run_dyp:
+run_DYP:
 	ulimit -s unlimited && ./template_dyp.a
 
-run_pt:
+run_PT:
 	ulimit -s unlimited && ./template_pt.a
 
-run_un:
+run_UN:
 	ulimit -s unlimited && ./template_un.a
 
-# Python Code
-# pyRunner:
+# Python Code helper for semi-automation. Skynet generator will be the future.
+# pyCompileToC:
+#    $(info python compileToC.py)
+#    $(error Not Supported yet... You shall not pass!)
+
+# pyDataAnalysis:
 #    $(info python compileToC.py)
 #    $(error Not Supported yet... You shall not pass!)
 
@@ -255,8 +272,8 @@ printpdf:
 	--word-wrap --style=emacs --tabsize=3 --landscape $(FILES) \
 	-o - | ps2pdfwr - $(PDFPRINT)
 
-# Create a tar ball for project turn in
+# Create a tar ball for project
 turnin:
 	tar -czvf $(TAR) $(PSPRINT) $(FILES)
 
-.PHONY: all clean compile_Default compile_F compile_D compile_LD compile_DYP compile_PT compile_UN print printpdf turnin run grinder
+.PHONY: all clean compile_all compile_Default compile_F compile_D compile_LD compile_DYP compile_PT compile_UN print printpdf turnin run run_default run_f run_d run_ld run_dyp run_pt run_un grinder
