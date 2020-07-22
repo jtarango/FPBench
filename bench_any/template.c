@@ -30,6 +30,11 @@ extern "C"
 #ifndef _FPCORE_C_
 #define _FPCORE_C_
 
+#ifdef _MSC_VER
+    #pragma comment(linker,  "/HEAP:2147483648")
+    #pragma comment(linker, "/STACK:2147483648")
+#endif // _MSC_VER
+
 // Includes
 #include <fenv.h>
 #include <math.h>
@@ -40,45 +45,101 @@ extern "C"
 #include <time.h>
 #include <unistd.h>
 #include <climits>
+#include <assert.h>
 
 /********* CONFIGURATION INFORMATION BELOW *********/
-// Constant file we append data to until we reach the variable maxima.
-const char filenameDaisy[] = "fpcore_dataset.csv";
-
 // Source evaluation type for library.
 // TYPE HEADER CONFIGURATION FILE SELECTION.
-#ifndef CONFIG_H
-    #define CONFIG_H UINT_MAX
-#endif // E_TYPE
-
-#if   (CONFIG_H == 1) // F
+#ifdef CONFIG_F
     #pragma message("CONFIG_H == 1")
-#elif (CONFIG_H == 2) // D
-    #pragma message("CONFIG_H == 2")
-#elif (CONFIG_H == 3) // LD
-    #pragma message("CONFIG_H == 3")
-#elif (CONFIG_H == 4) // DYP
-    #pragma message("CONFIG_H == 4")
-#elif (CONFIG_H == 5) // PT
-    #pragma message("CONFIG_H == 5")
-#elif (CONFIG_H == 6) // UN
-    #pragma message("CONFIG_H == 6")
+    const char filenameDaisy[] = "fpcore_dataset_f.csv";
+    typedef float E_TYPE;
+    // Destination compare type used for accuracy.
+    typedef long double C_TYPE;
+    #define CF 1
 #else
+    #define CF 0
+#endif // CONFIG_F
+
+#ifdef CONFIG_D
+    #pragma message("CONFIG_H == 2")
+    const char filenameDaisy[] = "fpcore_dataset_d.csv";
+    typedef double E_TYPE;
+    // Destination compare type used for accuracy.
+    typedef long double C_TYPE;
+    #define CD 1
+#else
+    #define CD 0
+#endif // CONFIG_D
+
+#ifdef CONFIG_LD
+    #pragma message("CONFIG_H == 3")
+    const char filenameDaisy[] = "fpcore_dataset_ld.csv";
+    typedef long double E_TYPE;
+    // Destination compare type used for accuracy.
+    typedef long double C_TYPE;
+    #define CLD 1
+#else
+    #define CLD 0
+#endif // CONFIG_LD
+
+#ifdef CONFIG_DYP
+    #pragma message("CONFIG_H == 4")
+    const char filenameDaisy[] = "fpcore_dataset_dyp.csv";
+    typedef float E_TYPE; // @todo
+    // Destination compare type used for accuracy.
+    typedef long double C_TYPE;
+    #define CDYP 1
+#else
+    #define CDYP 0
+#endif // CONFIG_DYP
+
+#ifdef CONFIG_PT
+    #define CPT 1
+    #pragma message("CONFIG_H == 5")
+    const char filenameDaisy[] = "fpcore_dataset_pt.csv";
+    #pragma message("_CONFIG_H_ == 1, F")
+    typedef float E_TYPE; // @todo
+    // Destination compare type used for accuracy.
+    typedef long double C_TYPE;
+#else
+    #define CPT 0
+#endif // CONFIG_PT
+
+#ifdef CONFIG_UN
+    #pragma message("CONFIG_H == 6")
+    const char filenameDaisy[] = "fpcore_dataset_un.csv";
+    typedef float E_TYPE; // @todo
+    // Destination compare type used for accuracy.
+    typedef long double C_TYPE;
+    #define CPUN 1
+#else
+    #define CPUN 0
+#endif // CONFIG_UN
+
+#ifdef CONFIG_PT // PT
+
+#endif // CONFIG_PT
+
+#if ((CF == 0) && (CD == 0) && (CLD == 0) && (CDYP == 0) && (CPT == 0) && (CPUN == 0))
+    // Constant file we append data to until we reach the variable maxima.
     #pragma message("CONFIG_H == DEFAULT")
+    #ifndef filenameDaisy
+    const char filenameDaisy[] = "fpcore_dataset_default.csv";
+    #endif // filenameDaisy
     #ifndef E_TYPE
     typedef float E_TYPE;
     #endif // E_TYPE
-
     // Destination compare type used for accuracy.
     #ifndef C_TYPE
     typedef long double C_TYPE;
     #endif // C_TYPE
-
-    // Used for test harness
-    const unsigned int testLoops = 1;
-    const int isDebugOn = 0;
-#endif // TYPE HEADER CONFIGURATION FILE.
+#endif // ((CF == 0) && (CD == 0) && (CLD == 0) && (CDYP ==0) && (CPT == 0) && (CPUN == 0))
 /********* CONFIGURATION INFORMATION ABOVE *********/
+
+// Used for test harness
+const unsigned int testLoops = (UINT_MAX);
+const int isDebugOn = 0;
 
 typedef long unsigned int fpbenchTime_t; // Timer width for numerical with issues
 
@@ -88,7 +149,7 @@ typedef long unsigned int fpbenchTime_t; // Timer width for numerical with issue
 #define MAX_VARS (20) // Max number of variables for benchmarks.
 #define MIN_FUNCTIONS (1)
 #define MAX_FUNCTIONS (77)
-#define TIME_LIMIT_SHIFT (32) // Bit shift value for time.
+#define TIME_LIMIT_SHIFT (16) // Bit shift value for time.
 #define TIME_LIMIT_SHIFT_CHECK (pow(2, ceil(log(TIME_LIMIT_SHIFT)/log(TIME_LIMIT_SHIFT)))) // Bit shift value for time.
 #define TIME_LIMIT ((fpbenchTime_t)((fpbenchTime_t)1 << (fpbenchTime_t)TIME_LIMIT_SHIFT)-(fpbenchTime_t)1) // Timeout value in cycles. #define TIME_LIMIT INT_MAX
 
@@ -107,8 +168,9 @@ typedef enum{
     faultDaisy = 1,
 } statusDaisy; // library status
 
+/****************************************************************************************/
 // Pre-definitions functions from FPCores.
-
+/****************************************************************************************/
 /*daisy*/
 E_TYPE daisy_ex0(E_TYPE x, E_TYPE y);
 E_TYPE daisy_ex1(E_TYPE x, E_TYPE y);
@@ -205,15 +267,16 @@ E_TYPE salsa_ex6(E_TYPE a11, E_TYPE a22, E_TYPE a33, E_TYPE a44, E_TYPE b1, E_TY
 E_TYPE salsa_ex7(E_TYPE x0);
 E_TYPE salsa_ex8(E_TYPE a11, E_TYPE a12, E_TYPE a13, E_TYPE a14, E_TYPE a21, E_TYPE a22, E_TYPE a23, E_TYPE a24, E_TYPE a31, E_TYPE a32, E_TYPE a33, E_TYPE a34, E_TYPE a41, E_TYPE a42, E_TYPE a43, E_TYPE a44, E_TYPE v1, E_TYPE v2, E_TYPE v3, E_TYPE v4);
 E_TYPE salsa_ex9(E_TYPE Q11, E_TYPE Q12, E_TYPE Q13, E_TYPE Q21, E_TYPE Q22, E_TYPE Q23, E_TYPE Q31, E_TYPE Q32, E_TYPE Q33);
-
+/****************************************************************************************/
 // Application Programming Interface (API)
 statusDaisy fpbench_API(int function, E_TYPE vars[MAX_VARS], E_TYPE *retValue, int debug, long double *runTime);
 
 // Self Test.
 void fpbench_testHarness(void);
+/****************************************************************************************/
 
 // Helper Functions.
-E_TYPE fabsf(E_TYPE x);
+E_TYPE fabsf_fpcore(E_TYPE x);
 unsigned int min_uint(unsigned int a, unsigned int b);
 double rand_double(void);
 double gauss_rand(int select);
@@ -222,6 +285,7 @@ int timeOut(fpbenchTime_t tStart, fpbenchTime_t tStop);
 E_TYPE isOuttaTime(int outtaTime, E_TYPE value, const char name[CHAR_BUFFER_SIZE]);
 
 // MAIN Functions.
+/****************************************************************************************/
 /*DAISY*/
 E_TYPE daisy_ex0(E_TYPE x, E_TYPE y) {
     E_TYPE retval = ((E_TYPE) sqrt(((E_TYPE) (((E_TYPE) (x * x)) + ((E_TYPE) (y * y))))));
@@ -808,7 +872,7 @@ E_TYPE rump_ex2(E_TYPE a, E_TYPE b) {
 }
 
 /*salsa*/
-E_TYPE fabsf(E_TYPE x)
+E_TYPE fabsf_fpcore(E_TYPE x)
 {
     E_TYPE retval;
     if (x >0) {
@@ -907,7 +971,7 @@ E_TYPE salsa_ex3(E_TYPE y, E_TYPE yd) {
         xc0 = ((Ac00 * xc0) + ((Ac01 * xc1) + (Bc0 * yc)));
         xc1 = ((Ac10 * xc0) + ((Ac11 * xc1) + (Bc1 * yc)));
         i = (i + 1.0f);
-        e = fabsf((yc - xc1));
+        e = fabsf_fpcore((yc - xc1));
         test = (e > eps);
 
         // Timeout code
@@ -994,7 +1058,7 @@ E_TYPE salsa_ex6(E_TYPE a11, E_TYPE a22, E_TYPE a33, E_TYPE a44, E_TYPE b1, E_TY
         x_n3 = ((((b3 / a33) - ((0.2f / a33) * x1)) + ((0.3f / a33) * x2)) - ((0.1f / a33) * x4));
         x_n4 = ((((b4 / a44) + ((0.1f / a44) * x1)) - ((0.2f / a44) * x2)) - ((0.3f / a44) * x3));
         i = (i + 1.0f);
-        e = fabsf((x_n4 - x4));
+        e = fabsf_fpcore((x_n4 - x4));
         x1 = x_n1;
         x2 = x_n2;
         x3 = x_n3;
@@ -1032,7 +1096,7 @@ E_TYPE salsa_ex7(E_TYPE x0) {
         E_TYPE f = (((((((x * x) * ((x * x) * x)) - ((10.0f * x) * ((x * x) * x))) + ((40.0f * x) * (x * x))) - ((80.0f * x) * x)) + (80.0f * x)) - 32.0f);
         E_TYPE ff = ((((((5.0f * x) * ((x * x) * x)) - ((40.0f * x) * (x * x))) + ((120.0f * x) * x)) - (160.0f * x)) + 80.0f);
         x_n = (x - (f / ff));
-        e = fabsf((x - x_n));
+        e = fabsf_fpcore((x - x_n));
         x = x_n;
         i = (i + 1.0f);
         test = ((e > eps) && (i < 100000.0f));
@@ -1071,7 +1135,7 @@ E_TYPE salsa_ex8(E_TYPE a11, E_TYPE a12, E_TYPE a13, E_TYPE a14, E_TYPE a21, E_T
     E_TYPE retval;
 
     int test = (e > eps);
-    while ((0 || test) && (outtaTime==0)) {
+    while ((0 || test) && (outtaTime ==0)) {
         vx = (((a11 * v1_1) + (a12 * v2_1)) + ((a13 * v3_1) + (a14 * v4_1)));
         vy = (((a21 * v1_1) + (a22 * v2_1)) + ((a23 * v3_1) + (a24 * v4_1)));
         vz = (((a31 * v1_1) + (a32 * v2_1)) + ((a33 * v3_1) + (a34 * v4_1)));
@@ -1081,7 +1145,7 @@ E_TYPE salsa_ex8(E_TYPE a11, E_TYPE a12, E_TYPE a13, E_TYPE a14, E_TYPE a21, E_T
         v2_1 = (vy / vw);
         v3_1 = (vz / vw);
         v4_1 = 1.0f;
-        e = fabsf((1.0f - v1_1));
+        e = fabsf_fpcore((1.0f - v1_1));
         test = (e > eps);
         // Timeout code
         tStop = clock();
@@ -1133,7 +1197,7 @@ E_TYPE salsa_ex9(E_TYPE Q11, E_TYPE Q12, E_TYPE Q13, E_TYPE Q21, E_TYPE Q22, E_T
         r3 = (r3 + h3);
         r = (((qj1 * qj1) + (qj2 * qj2)) + (qj3 * qj3));
         rjj = sqrt(r);
-        e = fabsf((1.0f - (rjj / rold)));
+        e = fabsf_fpcore((1.0f - (rjj / rold)));
         i = (i + 1.0f);
         rold = rjj;
         test = (e > eps);
@@ -1162,11 +1226,27 @@ int timeOut(fpbenchTime_t tStart, fpbenchTime_t tStop)
     }
     return 0;
 }
+/****************************************************************************************/
+/* Determines the size of a file and reports size */
+long signed int getFileSize(FILE *fileContext)
+{
+    long signed int prev;
+    long signed int size;
+    prev = ftell(fileContext);
+    fseek(fileContext, 0L, SEEK_END);
+    size = ftell(fileContext);
+    fseek(fileContext, prev,SEEK_SET); // Go back to where we were.
+    if (size == (long signed int) -1) {
+        printf("ERROR ftell.\n");
+        assert(0);
+    }
+    return size;
+}
 
 /* Function to check if we are out of time */
 E_TYPE isOuttaTime(int outtaTime, E_TYPE value, const char name[CHAR_BUFFER_SIZE])
 {
-    E_TYPE returnValue;
+    E_TYPE returnValue = 0;
     // Timeout Code
     if (outtaTime == 0) {
         returnValue = value;
@@ -1301,7 +1381,7 @@ double rand_double(void)
 {
     static unsigned int ranOnce = 0;
     static int pingPong = 0;
-    double v;
+    double v = 0;
     if (ranOnce == 0){
         printf("  Random Seed Set\n");
         ranOnce++;
@@ -1363,6 +1443,251 @@ void fpbench_map(int selected, char benchmarkName[CHAR_BUFFER_SIZE])
     return;
 }
 
+statusDaisy fpcore_executeBenchmark(int function, C_TYPE *inputs, C_TYPE *returnValue)
+{
+    C_TYPE retVal = 0;
+    statusDaisy status = healthyDaisy;
+
+    switch(function) {
+        case 1:
+            retVal = daisy_ex0(inputs[0], inputs[1]);
+            break;
+        case 2:
+            retVal = daisy_ex1(inputs[0], inputs[1]);
+            break;
+        case 3:
+            retVal = daisy_ex2(inputs[0], inputs[1]);
+            break;
+        case 4:
+            retVal = daisy_ex3(inputs[0], inputs[1]);
+            break;
+        case 5:
+            retVal = daisy_ex4(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]);
+            break;
+        case 6:
+            retVal = daisy_ex5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
+            break;
+        case 7:
+            retVal = daisy_ex6(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
+            break;
+        case 8:
+            retVal = fptaylor_extra_ex0(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
+            break;
+        case 9:
+            retVal = fptaylor_extra_ex1(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
+            break;
+        case 10:
+            retVal = fptaylor_extra_ex2(inputs[0]);
+            break;
+        case 11:
+            retVal = fptaylor_extra_ex5(inputs[0], inputs[1]);
+            break;
+        case 12:
+            retVal = fptaylor_extra_ex7(inputs[0], inputs[1]);
+            break;
+        case 13:
+            retVal = fptaylor_extra_ex8(inputs[0], inputs[1]);
+            break;
+        case 14:
+            retVal = fptaylor_extra_ex9(inputs[0], inputs[1]);
+            break;
+        case 15:
+            retVal = fptaylor_extra_ex11(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 16:
+            retVal = fptaylor_extra_ex12(inputs[0]);
+            break;
+        case 17:
+            retVal = fptaylor_extra_ex13(inputs[0], inputs[1]);
+            break;
+        case 18:
+            retVal = fptaylor_extra_ex14(inputs[0], inputs[1]);
+            break;
+        case 19:
+            retVal = fptaylor_extra_ex15(inputs[0], inputs[1]);
+            break;
+        case 20:
+            retVal = fptaylor_real2float_ex3(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
+            break;
+        case 21:
+            retVal = fptaylor_real2float_ex4(inputs[0], inputs[1]);
+            break;
+        case 22:
+            retVal = fptaylor_real2float_ex5(inputs[0], inputs[1]);
+            break;
+        case 23:
+            retVal = fptaylor_real2float_ex8(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
+            break;
+        case 24:
+            retVal = fptaylor_real2float_ex9(inputs[0], inputs[1], inputs[2], inputs[3]);
+            break;
+        case 25:
+            retVal = fptaylor_real2float_ex10(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
+            break;
+        case 26:
+            retVal = fptaylor_tests_ex0(inputs[0]);
+            break;
+        case 27:
+            retVal = fptaylor_tests_ex1(inputs[0], inputs[1]);
+            break;
+        case 28:
+            retVal = fptaylor_tests_ex2(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 29:
+            retVal = fptaylor_tests_ex3(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7]);
+            break;
+        case 30:
+            retVal = fptaylor_tests_ex4(inputs[0], inputs[1]);
+            break;
+        case 31:
+            retVal = fptaylor_tests_ex5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
+            break;
+        case 32:
+            retVal = fptaylor_tests_ex6(inputs[0]);
+            break;
+        case 33:
+            retVal = fptaylor_tests_ex7(inputs[0]);
+            break;
+        case 34:
+            retVal = fptaylor_tests_ex8(inputs[0], inputs[1], inputs[2], inputs[3]);
+            break;
+        case 35:
+            retVal = fptaylor_tests_ex9(inputs[0], inputs[1], inputs[2], inputs[3]);
+            break;
+        case 36:
+            retVal = hamming_ch3_ex0(inputs[0]);
+            break;
+        case 37:
+            retVal = hamming_ch3_ex4(inputs[0]);
+            break;
+        case 38:
+            retVal = hamming_ch3_ex5(inputs[0]);
+            break;
+        case 39:
+            retVal = hamming_ch3_ex7(inputs[0]);
+            break;
+        case 40:
+            retVal = hamming_ch3_ex12(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 41:
+            retVal = hamming_ch3_ex13(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 42:
+            retVal = hamming_ch3_ex14(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 43:
+            retVal = hamming_ch3_ex15(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 44:
+            retVal = herbie_ex0(inputs[0], inputs[1]);
+            break;
+        case 45:
+            retVal = premonious_ex0(inputs[0]);
+            break;
+        case 46:
+            retVal = premonious_ex1(inputs[0]);
+            break;
+        case 47:
+            retVal = rosa_ex0(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 48:
+            retVal = rosa_ex1(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 49:
+            retVal = rosa_ex2(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 50:
+            retVal = rosa_ex3(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 51:
+            retVal = rosa_ex4(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 52:
+            retVal = rosa_ex5(inputs[0], inputs[1]);
+            break;
+        case 53:
+            retVal = rosa_ex6(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 54:
+            retVal = rosa_ex7(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 55:
+            retVal = rosa_ex8(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 56:
+            retVal = rosa_ex9(inputs[0]);
+            break;
+        case 57:
+            retVal = rosa_ex10(inputs[0]);
+            break;
+        case 58:
+            retVal = rosa_ex11(inputs[0]);
+            break;
+        case 59:
+            retVal = rosa_ex12(inputs[0]);
+            break;
+        case 60:
+            retVal = rosa_ex13(inputs[0]);
+            break;
+        case 61:
+            retVal = rosa_ex14(inputs[0]);
+            break;
+        case 62:
+            retVal = rosa_ex15(inputs[0]);
+            break;
+        case 63:
+            retVal = rosa_ex16(inputs[0]);
+            break;
+        case 64:
+            retVal = rosa_ex17(inputs[0]);
+            break;
+        case 65:
+            retVal = rosa_ex18(inputs[0]);
+            break;
+        case 66:
+            retVal = rosa_ex19(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 67:
+            retVal = rosa_ex20(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 68:
+            retVal = rosa_ex21(inputs[0], inputs[1], inputs[2]);
+            break;
+        case 69:
+            retVal = rump_ex1(inputs[0], inputs[1]);
+            break;
+        case 70:
+            retVal = rump_ex2(inputs[0], inputs[1]);
+            break;
+        case 71:
+            retVal = salsa_ex1(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]);
+            break;
+        case 72:
+            retVal = salsa_ex3(inputs[0], inputs[1]);
+            break;
+        case 73:
+            retVal = salsa_ex4(inputs[0]);
+            break;
+        case 74:
+            retVal = salsa_ex6(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7]);
+            break;
+        case 75:
+            retVal = salsa_ex7(inputs[0]);
+            break;
+        case 76:
+            retVal = salsa_ex8(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8], inputs[9], inputs[10], inputs[11], inputs[12], inputs[13], inputs[14], inputs[15], inputs[16], inputs[17], inputs[18], inputs[19]);
+            break;
+        case 77:
+            retVal = salsa_ex9(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
+            break;
+        default:
+            printf("  Error in FP Core API usage.\n");
+            status = faultDaisy;
+    }
+    memcpy(returnValue, &retVal, min_uint(sizeof(returnValue), sizeof(E_TYPE))); // Copy resultant
+    return status;
+}
+
 /* Application Program Interface
  * int function: Function selection
  * E_TYPE vars[MAX_VARS]: Double precision input set.
@@ -1372,21 +1697,25 @@ void fpbench_map(int selected, char benchmarkName[CHAR_BUFFER_SIZE])
  */
 statusDaisy fpbench_API(int function, E_TYPE vars[maxInputs+1], E_TYPE *retValue, int debug, long double *runTime)
 {
-    FILE * appendingDaisyFileContext;
-    char *content = (char *)malloc(sizeof(char)*CHAR_BUFFER_SIZE);
-    char *contentName = (char *)malloc(sizeof(char)*CHAR_BUFFER_SIZE);
-    long unsigned int fileByteSize;
+    FILE *appendingDaisyFileContext = (FILE *)calloc(1, sizeof(FILE));
+    char *content = (char *)calloc(CHAR_BUFFER_SIZE, sizeof(char));
+    char *contentName = (char *)calloc(CHAR_BUFFER_SIZE, sizeof(char));
+    long signed int fileByteSize = 0;
+
     /* Check if file exists and open for writing.*/
-    appendingDaisyFileContext = fopen(filenameDaisy, "a+");
+    appendingDaisyFileContext = fopen(filenameDaisy, "r");
     if(access(filenameDaisy, F_OK ) != -1) // If file does not exist, create it
     {
+        fclose(appendingDaisyFileContext );
         appendingDaisyFileContext = fopen(filenameDaisy, "a");
     }
     else { // Write new to file.
+        //fclose(appendingDaisyFileContext);
         appendingDaisyFileContext = fopen(filenameDaisy, "w");
     }
-    fileByteSize = ftell(appendingDaisyFileContext);
-    if (fileByteSize > LONG_MAX){
+
+    fileByteSize = getFileSize(appendingDaisyFileContext);
+    if (fileByteSize > LONG_MAX) {
         printf("  File %s is %ld bytes of %ld byte maxima.\n", filenameDaisy, fileByteSize, LONG_MAX);
     }
 
@@ -1394,16 +1723,15 @@ statusDaisy fpbench_API(int function, E_TYPE vars[maxInputs+1], E_TYPE *retValue
     fpbenchTime_t tStart = 0;
     fpbenchTime_t tStop = 0;
     fpbenchTime_t tUsed = 0;
-    E_TYPE *inputs = (E_TYPE *)malloc(sizeof(E_TYPE)*maxInputs+1); // E_TYPE inputs[MAX_VARS];
-    E_TYPE retVal;
-    int validCase;
-    unsigned int i;
+    E_TYPE *inputs = (E_TYPE *)calloc(maxInputs*2, sizeof(E_TYPE)); // E_TYPE inputs[MAX_VARS];
+    E_TYPE retVal = 0;
+    int validCase = 0;
+    unsigned int i = 0;
     statusDaisy status = healthyDaisy;
 
     // Set Data to debug pattern  then copy values
-    memset(&retVal, 0xAA, sizeof(retVal));
-    memset(inputs, 0, (sizeof(E_TYPE)*(maxInputs)));
-    memcpy(inputs, &vars, (sizeof(E_TYPE)*(maxInputs)));
+    memset(&retVal, 0x0, sizeof(retVal));
+    memcpy(inputs, &vars, (maxInputs * sizeof(E_TYPE)));
     for (i = 0; i < MAX_VARS; i++) {
         inputs[i] = vars[i];
     }
@@ -1414,25 +1742,25 @@ statusDaisy fpbench_API(int function, E_TYPE vars[maxInputs+1], E_TYPE *retValue
     tStart = clock();
     switch(function) {
         case 1:
-        retVal = daisy_ex0(inputs[0], inputs[1]);
+            retVal = daisy_ex0(inputs[0], inputs[1]);
             break;
         case 2:
-        retVal = daisy_ex1(inputs[0], inputs[1]);
+            retVal = daisy_ex1(inputs[0], inputs[1]);
             break;
         case 3:
-        retVal = daisy_ex2(inputs[0], inputs[1]);
+            retVal = daisy_ex2(inputs[0], inputs[1]);
             break;
         case 4:
-        retVal = daisy_ex3(inputs[0], inputs[1]);
+            retVal = daisy_ex3(inputs[0], inputs[1]);
             break;
         case 5:
-        retVal = daisy_ex4(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]);
+            retVal = daisy_ex4(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]);
             break;
         case 6:
-        retVal = daisy_ex5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
+            retVal = daisy_ex5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
             break;
         case 7:
-        retVal = daisy_ex6(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
+            retVal = daisy_ex6(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
             break;
         case 8:
             retVal = fptaylor_extra_ex0(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
@@ -1654,11 +1982,15 @@ statusDaisy fpbench_API(int function, E_TYPE vars[maxInputs+1], E_TYPE *retValue
     *runTime = (long double) tUsed;
     validCase = (function >= MIN_FUNCTIONS && function <= MAX_FUNCTIONS);
     if (validCase) {
+        fileByteSize = getFileSize(appendingDaisyFileContext);
+        if (fileByteSize == -1){
+            assert(0);
+        }
         if (fileByteSize < LONG_MAX) {
             // Prepare content for file
-            memset(content, '\0', (sizeof(char) * (CHAR_BUFFER_SIZE - 1)));
+            memset(content, '\0', (CHAR_BUFFER_SIZE * sizeof(char)));
             fpbench_map(function, contentName);
-            snprintf(content, ((sizeof(char) * CHAR_BUFFER_SIZE) - 1),
+            snprintf(content, (CHAR_BUFFER_SIZE * sizeof(char)),
                      "%s, "
                      "%d, "
                      "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
@@ -1698,27 +2030,253 @@ statusDaisy fpbench_API(int function, E_TYPE vars[maxInputs+1], E_TYPE *retValue
             printf("  File write content: %s", content);
         }
     }
+
+
     fclose(appendingDaisyFileContext);
+    free(content);
+    free(contentName);
+    free(inputs);
+    return status;
+}
+
+/* Copy a char * array until a '\0' nil char. */
+void copy_string(char destination[CHAR_BUFFER_SIZE], char source[CHAR_BUFFER_SIZE]) {
+    int index = 0;
+
+    while ( (source[index] != '\0') &&
+            (index < CHAR_BUFFER_SIZE) ) {
+        destination[index] = source[index];
+        index++;
+    }
+    destination[index] = '\0';
+    return;
+}
+
+/* Application Program Interface for CVS files
+ * int function: Function selection
+ * int debug: Debug Mode (0=off,1=on)
+ * long double *runTime: CPU cycles for execution.
+ */
+statusDaisy fpbench_CVSProcess(const char sourceFile[], const char destinationFile[], long unsigned int indexStart, int debug)
+{
+    // Reading File processing variables.
+    FILE *readingFileContext = (FILE *)calloc(1, sizeof(FILE)); // Read file Context.
+    char *contentReadBuffer = (char *)calloc(CHAR_BUFFER_SIZE, sizeof(char)); // Read content buffer.
+    long unsigned int readingCurrentLine = 0; // Current Reading line
+    long unsigned int readBufferLocation = 0; // Current Reading line
+    char readCharacter = 'r';
+
+    // Expected line format: function number, fpCoreName, inputs[0], ..., inputs[MAX_VARS], returnValue, cycleTime.
+    int function = 1;
+    char *fpCoreName = (char *)calloc(CHAR_BUFFER_SIZE, sizeof(char));
+    C_TYPE *inputs = (C_TYPE *)calloc(maxInputs*2, sizeof(C_TYPE)); // E_TYPE inputs[MAX_VARS]; FPCore Variable buffer.
+    C_TYPE returnValue = 0;
+    long double cycleTime = 0;
+
+    // Variables used for processing.
+    long double userInput = 0.0;
+    int validCase = 0;
+    int tokenNumber = 0;
+    int tokenReady = 0;
+    int restartFormat = 0;
+    statusDaisy status = healthyDaisy;
+
+    /*Time variables*/
+    fpbenchTime_t tStart = 0;
+    fpbenchTime_t tStop = 0;
+    //fpbenchTime_t tUsed = 0;
+
+    // WritingFile processing variables.
+    FILE *writingFileContext = (FILE *)calloc(1, sizeof(FILE));
+    char *contentWriteBuffer = (char *)calloc(CHAR_BUFFER_SIZE, sizeof(char));
+    char *contentWriteName = (char *)calloc(CHAR_BUFFER_SIZE, sizeof(char));
+    //long unsigned int writingCurrentLine; // Current writing line.
+    long signed int fileByteSize;       // Maximum file size.
+
+    /* Check if file exists and open for writing.*/
+    writingFileContext = fopen(destinationFile, "r");
+    if(access(destinationFile, F_OK ) != -1) // If file does not exist, create it
+    {
+        fclose(writingFileContext);
+        writingFileContext = fopen(destinationFile, "a");
+    }
+    else { // Write new to file.
+        fclose(writingFileContext);
+        writingFileContext = fopen(destinationFile, "w");
+    }
+    fileByteSize = getFileSize(writingFileContext);
+    if (fileByteSize > LONG_MAX){
+        printf("  File %s is %ld bytes of %ld byte maxima.\n", destinationFile, fileByteSize, LONG_MAX);
+    }
+
+    // Starting main read, process, write to new dataset.
+    readingFileContext = fopen(sourceFile, "r");
+    if(access(sourceFile, F_OK ) != -1) // If file does not exist, create it
+    {
+        rewind(readingFileContext);
+        readingCurrentLine = 1;
+        readBufferLocation = 0;
+
+        // currentLine > indexStart condition skips lines
+        while( (readCharacter = fgetc(readingFileContext)) != EOF) {
+            switch(readCharacter) {
+                case ',':
+                    if(readingCurrentLine > indexStart) {
+                        contentReadBuffer[readBufferLocation] = '\0';
+                        printf("Token char: %s,", contentReadBuffer);
+                        readBufferLocation = 0;
+                        tokenReady = 1;
+                    }
+                    break;
+                case '\n':
+                    if(readingCurrentLine > indexStart) {
+                        contentReadBuffer[readBufferLocation] = '\0';
+                        printf("Token: %s\n", contentReadBuffer);
+                        readBufferLocation = 0;
+                        restartFormat = 1;
+                    }
+                    readingCurrentLine++;
+                    break;
+                default: // Process letters, numbers, dot, underscores, etc.
+                    if(readingCurrentLine > indexStart) {
+                        contentReadBuffer[readBufferLocation] = readCharacter;
+                        readBufferLocation++; // Increment read buffer to next index location.
+                    }
+                    break;
+            }
+
+            if ( (readingCurrentLine < indexStart) &&
+                 ( (tokenReady == 1) || (restartFormat == 1)) ) {
+                printf("Error fpbench_CVSProcess in Condition (%ld < %ld) and tokenReady = %d restartFormat = %d.", readingCurrentLine, indexStart, tokenReady, restartFormat);
+                assert(0);
+            }
+
+            // Process Token into buffer
+            if (tokenReady == 1) {
+                tokenReady = 0;
+                if (tokenNumber == 0) {
+                    // Benchmark Function Number
+                    function = atoi(contentReadBuffer);
+                }
+                else if(tokenNumber == 1) {
+                    // Benchmark String Name
+                    copy_string(fpCoreName, contentReadBuffer);
+                }
+                else if ( (tokenNumber >= inputStart) &&
+                          (tokenNumber <= inputStart+MAX_VARS) ) {
+                    // Input Value
+                    userInput = strtod(contentReadBuffer, NULL);
+                    inputs[tokenNumber] = (C_TYPE) userInput;
+                }
+                else if ( tokenNumber   == (maxInputs-2) &&
+                         ((maxInputs-2) == (inputStart+MAX_VARS+1))) {
+                    // Result Value
+                    strtod(contentReadBuffer, NULL);
+                    returnValue = (E_TYPE) userInput;
+                }
+                else if ( tokenNumber   == (maxInputs-1) &&
+                         ((maxInputs-1) == (inputStart+MAX_VARS+2))) {
+                    // Clock Cycles Value
+                    strtod(contentReadBuffer, NULL);
+                    cycleTime = (E_TYPE) userInput;
+                    tokenNumber = -1;
+                }
+                else if (tokenNumber >= maxInputs || tokenNumber < 0) {
+                    printf("fpbench_CVSProcess ERROR Out of Bounds! TokenNumber: %d", tokenNumber);
+                    assert(0);
+                }
+                tokenNumber++;
+            }
+
+            // Execute and Write Token to new dataset CVS.
+            validCase = (function >= MIN_FUNCTIONS && function <= MAX_FUNCTIONS);
+            if (validCase == 1 && restartFormat == 1) {
+                // Execute Tokens on new benchmark.
+                tStart = clock();
+                status = fpcore_executeBenchmark(function, inputs, &returnValue);
+                tStop = clock();
+                cycleTime = (tStop-tStart);
+                restartFormat = 0;
+
+                // Prepare and write to file.
+                fileByteSize = getFileSize(writingFileContext);
+                if (fileByteSize < LONG_MAX) {
+                    // Prepare content for file
+                    memset(contentWriteBuffer, '\0', (CHAR_BUFFER_SIZE * sizeof(char)));
+                    fpbench_map(function, contentWriteName);
+                    // ASSERT if contentWriteName != fpCoreName
+                    snprintf(contentWriteBuffer, ((sizeof(char) * CHAR_BUFFER_SIZE) - 1),
+                             "%s, "
+                             "%d, "
+                             "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                             "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                             "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                             "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                             "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                             "%.32Lf, "
+                             "%Lf\n",
+                             contentWriteName,
+                             function,
+                             (C_TYPE) inputs[0], (C_TYPE) inputs[1], (C_TYPE) inputs[2], (C_TYPE) inputs[3],
+                             (C_TYPE) inputs[4], (C_TYPE) inputs[5], (C_TYPE) inputs[6], (C_TYPE) inputs[7],
+                             (C_TYPE) inputs[8], (C_TYPE) inputs[9], (C_TYPE) inputs[10], (C_TYPE) inputs[11],
+                             (C_TYPE) inputs[12], (C_TYPE) inputs[13], (C_TYPE) inputs[14], (C_TYPE) inputs[15],
+                             (C_TYPE) inputs[16], (C_TYPE) inputs[17], (C_TYPE) inputs[18], (C_TYPE) inputs[19],
+                             (C_TYPE) returnValue,
+                             (long double) (cycleTime));
+                    fputs(contentWriteBuffer, writingFileContext); // Write content to file
+                }
+                if (debug > 0) {
+                    // Debug information
+                    printf("  Write Function %d, Name %s\n", function, contentWriteName);
+                    printf("  Inputs: "
+                           "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                           "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                           "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                           "%.32Lf, %.32Lf, %.32Lf, %.32Lf, "
+                           "%.32Lf, %.32Lf, %.32Lf, %.32Lf\n",
+                           (C_TYPE) inputs[0], (C_TYPE) inputs[1], (C_TYPE) inputs[2], (C_TYPE) inputs[3],
+                           (C_TYPE) inputs[4], (C_TYPE) inputs[5], (C_TYPE) inputs[6], (C_TYPE) inputs[7],
+                           (C_TYPE) inputs[8], (C_TYPE) inputs[9], (C_TYPE) inputs[10], (C_TYPE) inputs[11],
+                           (C_TYPE) inputs[12], (C_TYPE) inputs[13], (C_TYPE) inputs[14], (C_TYPE) inputs[15],
+                           (C_TYPE) inputs[16], (C_TYPE) inputs[17], (C_TYPE) inputs[18], (C_TYPE) inputs[19]);
+                    printf("  Result: %.32Lf\n", (C_TYPE) returnValue);
+                    printf("  Cycle Time: %Lg\n", (long double) (cycleTime));
+                    printf("  File %s is %ld bytes of %ld byte maxima.\n", destinationFile, fileByteSize, LONG_MAX);
+                    printf("  File write content: %s", contentWriteBuffer);
+                }
+            }
+        }
+    }
+
+    fclose(readingFileContext);
+    fclose(writingFileContext);
+    free(readingFileContext);
+    free(writingFileContext);
+    free(contentReadBuffer);
+    free(fpCoreName);
+    free(inputs);
+    free(contentWriteBuffer);
+    free(contentWriteName);
     return status;
 }
 
 /* Test harness for program API*/
 void fpbench_testHarness(void)
 {
-    unsigned int i;
-    unsigned int j;
-    unsigned int validData;
-    const unsigned int testLoops = 1;
-    E_TYPE *inputs = (E_TYPE *)malloc(sizeof(E_TYPE)*(maxInputs+1)); // E_TYPE inputs[MAX_VARS];
-    E_TYPE retVal;
-    double randomValue;
-    long double runTime;
+    long unsigned int i = 0;
+    long unsigned int j = 0;
+    long unsigned int validData = 0;
+    E_TYPE *inputs = (E_TYPE *)calloc((maxInputs*2), sizeof(E_TYPE)); // E_TYPE inputs[MAX_VARS];
+    E_TYPE retVal = 0;
+    double randomValue = 0;
+    long double runTime = 0;
     long double totalTime = 0;
 
     statusDaisy status = healthyDaisy;
     printf("----------------------\n");
     printf(" FPCore Test Harness...\n");
-    for (j = 0; j < (unsigned int) testLoops; j++) {
+    for (j = 0; j < (long unsigned int) testLoops; j++) {
         for (i = 0; i < MAX_VARS; i++) {
             randomValue = 0;
             validData = validDataInput(randomValue);
@@ -1743,6 +2301,7 @@ void fpbench_testHarness(void)
     }
     printf(" Cycle Time: %Lg\n", totalTime);
     printf("----------------------\n");
+    free(inputs);
     return;
 }
 
@@ -1763,19 +2322,25 @@ int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE]);
      *    = {program name, Function Select, Input_1, Input_2, Input_3, Input_4, Input_5, Input_6, Input_7, Input_8, Input_9, Debug Flag}
      */
     // Variables
-    E_TYPE *inputs = (E_TYPE *)malloc(sizeof(E_TYPE)*(maxInputs+1)); // E_TYPE inputs[MAX_VARS];
-    E_TYPE retVal;
-    long double runTime;
-    long double userInput;
-    unsigned int i;
-    unsigned int argCTop;
-    unsigned int validInputs;
-    unsigned int functionSelect;
-    unsigned int debug;
+    E_TYPE *inputs = (E_TYPE *)calloc((maxInputs*2), sizeof(E_TYPE)); // E_TYPE inputs[MAX_VARS];
+    E_TYPE retVal = 0;
+    long double runTime = 0;
+    long double userInput = 0;
+    unsigned int i = 0;
+    unsigned int argCTop = 0;
+    unsigned int validInputs = 0;
+    unsigned int functionSelect = 0;
+    unsigned int debug = 0;
 
     statusDaisy status = healthyDaisy;
+    /////////////////////////////////////
+    printf("filename=%s\n", filenameDaisy);
     fpbench_testHarness();
     return status;
+    ////////////////////////////////////
+    // status = fpbench_CVSProcess(sourceFile[], destinationFile[], indexStart, debug);
+    // return status;
+    ////////////////////////////////////
     printf("FP Core Benchmark\n");
     printf(" Number of arguments count argc = %d.\n", argc);
     printf(" The argument supplied are: ");
@@ -1806,10 +2371,9 @@ int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE]);
 
     if (status == healthyDaisy && validInputs) {
         // Set Data to debug pattern  then copy values
-        memset(&retVal, 0, sizeof(E_TYPE));
-        memset(inputs, 0, (sizeof(E_TYPE)*(maxInputs)));
+        memset(&retVal, 0, (1 * sizeof(E_TYPE)));
 
-        functionSelect= (unsigned int) atoi(argv[1]);
+        functionSelect = (unsigned int) atoi(argv[1]);
         printf("  Function = %d\n", functionSelect);
         // Convert string inputs to long doubles and remove first input since it is selection
         argCTop = (unsigned int) (argc-1);
@@ -1826,6 +2390,7 @@ int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE]);
         status = fpbench_API(functionSelect, inputs, &retVal, debug, &runTime);
     }
     printf(" Done\n");
+    free(inputs);
     return status;
 }
 #endif // _FPCORE_C_
