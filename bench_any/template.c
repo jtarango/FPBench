@@ -142,6 +142,7 @@ extern "C"
 /****************************************************************************************/
 // Used for test harness, generates file of size according to the comment.
 //  File size with (loop, benchmarks in total) := (testLoops * MAX_FUNCTIONS) iterations.
+const int isDebugOn = 0;
 const unsigned int testLoops = (1);       //      60 KB with (1 * 77) iterations.
 // const unsigned int testLoops = (1 << 2);  //   239.2 KB
 // const unsigned int testLoops = (1 << 3);  //   478.4 KB
@@ -157,12 +158,12 @@ const unsigned int testLoops = (1);       //      60 KB with (1 * 77) iterations
 // const unsigned int testLoops = (1 << 14); //  488.96 MB
 // const unsigned int testLoops = (1 << 15); //  977.92 MB
 // const unsigned int testLoops = (1 << 16); // 1955.84 GB
-const int isDebugOn = 0;
 /****************************************************************************************/
 /********* CONFIGURATION INFORMATION ABOVE *********/
 
 typedef long unsigned int fpbenchTime_t; // Timer width for numerical with issues
-typedef enum{
+
+typedef enum {
     healthyDaisy = 0,
     faultDaisy = 1,
 } statusDaisy; // library status
@@ -1432,6 +1433,21 @@ double rand_double(void)
     v = gauss_rand(pingPong);
     return v;
 }
+
+/* Copy a char * array until a '\0' nil char. */
+void copy_string(char destination[CHAR_BUFFER_SIZE], char source[CHAR_BUFFER_SIZE])
+{
+    int index = 0;
+
+    while ( (source[index] != '\0') &&
+            (index < CHAR_BUFFER_SIZE) ) {
+        destination[index] = source[index];
+        index++;
+    }
+    destination[index] = '\0';
+    return;
+}
+
 /****************************************************************************************/
 /* FPbench enumeration map of all benchmarks in code source */
 void fpbench_map(int selected, char benchmarkName[CHAR_BUFFER_SIZE])
@@ -2079,20 +2095,6 @@ statusDaisy fpbench_API(int function, E_TYPE vars[maxInputs+1], E_TYPE *retValue
     return status;
 }
 
-/* Copy a char * array until a '\0' nil char. */
-void copy_string(char destination[CHAR_BUFFER_SIZE], char source[CHAR_BUFFER_SIZE])
-{
-    int index = 0;
-
-    while ( (source[index] != '\0') &&
-            (index < CHAR_BUFFER_SIZE) ) {
-        destination[index] = source[index];
-        index++;
-    }
-    destination[index] = '\0';
-    return;
-}
-
 /* Application Program Interface for CVS files
  * int function: Function selection
  * int debug: Debug Mode (0=off,1=on)
@@ -2348,11 +2350,11 @@ void fpbench_testHarness(void)
 
 /* Main function for user input */
 #ifndef LIBRARY_MODE
-int main(int argc, char *argv[CHAR_BUFFER_SIZE])
+    int main(int argc, char *argv[CHAR_BUFFER_SIZE])
 #elif (LIBRARY_MODE >= 0)
-int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE]);
+    int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE])
 #else // LIBRARY_MODE is defined
-int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE]);
+    int daisy_main(int argc, char *argv[CHAR_BUFFER_SIZE])
 #endif // LIBRARY_MODE
 {
     /* Main argv index positions.
